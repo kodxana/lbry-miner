@@ -1,0 +1,21 @@
+{
+  "mine": {
+    "backend": "hip",
+    "url": "stratum+tcp://lbrypool.net:3334",
+    "wallet": "YOUR_LBC_WALLET_ADDRESS",
+    "password": "rust-miner",
+    "seconds": 0,
+    "platform": 0,
+    "device": 0,
+    "hip_arch": "gfx1201",
+    "work_size": 256,
+    "batch_size": 1048576,
+    "start_nonce": 0,
+    "dry_run": false,
+    "ui": "tui",
+    "target_mhs": null,
+    "batch_sleep_ms": 0,
+    "connect_timeout": 20,
+    "reconnect_delay": 5
+  }
+}
