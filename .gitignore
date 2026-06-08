@@ -1,4 +1,5 @@
 target/
+dist/
 
 # Local miner profiles can contain payout addresses and worker names.
 configs/*.local.json
