@@ -12,17 +12,21 @@ pub struct SearchConfig {
 
 #[cfg(feature = "opencl")]
 mod gpu {
+    use std::fmt::Display;
     use std::ptr;
 
     use anyhow::{Context as AnyhowContext, Result, anyhow, bail};
     use opencl3::command_queue::CommandQueue;
     use opencl3::context::Context;
-    use opencl3::device::{CL_DEVICE_TYPE_ALL, Device};
+    use opencl3::device::{
+        CL_DEVICE_TYPE_ACCELERATOR, CL_DEVICE_TYPE_ALL, CL_DEVICE_TYPE_CPU, CL_DEVICE_TYPE_DEFAULT,
+        CL_DEVICE_TYPE_GPU, Device,
+    };
     use opencl3::kernel::{ExecuteKernel, Kernel};
     use opencl3::memory::{Buffer, CL_MEM_READ_ONLY, CL_MEM_READ_WRITE, CL_MEM_WRITE_ONLY};
     use opencl3::platform::get_platforms;
     use opencl3::program::Program;
-    use opencl3::types::{CL_BLOCKING, cl_uint, cl_ulong};
+    use opencl3::types::{CL_BLOCKING, cl_device_type, cl_uint, cl_ulong};
 
     use crate::opencl::SearchConfig;
     use crate::pow::{
@@ -68,11 +72,19 @@ mod gpu {
             let platforms = get_platforms()?;
             let platform = platforms
                 .get(platform_index)
-                .ok_or_else(|| anyhow!("OpenCL platform {platform_index} was not found"))?;
+                .ok_or_else(|| {
+                    anyhow!(
+                        "OpenCL platform {platform_index} was not found; run list-opencl to see available platform indexes"
+                    )
+                })?;
             let device_ids = platform.get_devices(CL_DEVICE_TYPE_ALL)?;
             let device_id = *device_ids
                 .get(device_index)
-                .ok_or_else(|| anyhow!("OpenCL device {device_index} was not found"))?;
+                .ok_or_else(|| {
+                    anyhow!(
+                        "OpenCL device {device_index} was not found on platform {platform_index}; run list-opencl to see available device indexes"
+                    )
+                })?;
             let device = Device::new(device_id);
             let context = Context::from_device(&device)?;
             let queue = CommandQueue::create_default(&context, 0)?;
@@ -186,14 +198,76 @@ mod gpu {
     }
 
     pub fn list_devices() -> Result<()> {
-        for platform in get_platforms()? {
-            println!("platform: {}", platform.name()?);
-            for device_id in platform.get_devices(CL_DEVICE_TYPE_ALL)? {
-                let device = Device::new(device_id);
-                println!("  device: {}", device.name()?);
-                println!("    vendor: {}", device.vendor()?);
-                println!("    version: {}", device.version()?);
-                println!("    compute units: {}", device.max_compute_units()?);
+        let platforms = get_platforms()?;
+        if platforms.is_empty() {
+            println!("No OpenCL platforms were found.");
+            println!(
+                "Install a GPU driver with OpenCL support, then re-run: cargo run --features opencl -- list-opencl"
+            );
+            return Ok(());
+        }
+
+        for (platform_index, platform) in platforms.iter().enumerate() {
+            println!(
+                "platform[{platform_index}]: {}",
+                format_info(platform.name())
+            );
+            println!("  vendor: {}", format_info(platform.vendor()));
+            println!("  version: {}", format_info(platform.version()));
+            println!("  profile: {}", format_info(platform.profile()));
+
+            let device_ids = platform.get_devices(CL_DEVICE_TYPE_ALL)?;
+            if device_ids.is_empty() {
+                println!("  devices: <none>");
+                continue;
+            }
+
+            for (device_index, device_id) in device_ids.iter().enumerate() {
+                let device = Device::new(*device_id);
+                let vendor = format_info(device.vendor());
+                println!("  device[{device_index}]: {}", format_info(device.name()));
+                println!(
+                    "    selection: --backend opencl --platform {platform_index} --device {device_index}"
+                );
+                println!("    type: {}", format_device_type(device.dev_type()));
+                println!("    vendor: {vendor}");
+                println!("    driver: {}", format_info(device.driver_version()));
+                println!("    device OpenCL: {}", format_info(device.version()));
+                println!("    OpenCL C: {}", format_info(device.opencl_c_version()));
+                println!(
+                    "    compute units: {}",
+                    format_info(device.max_compute_units())
+                );
+                println!(
+                    "    max work-group size: {}",
+                    format_info(device.max_work_group_size())
+                );
+                println!(
+                    "    preferred work-group multiple: {}",
+                    format_optional_info(device.preferred_work_group_size_multiple())
+                );
+                println!(
+                    "    max work-item sizes: {}",
+                    format_vec_info(device.max_work_item_sizes())
+                );
+                println!(
+                    "    global memory: {}",
+                    format_bytes_info(device.global_mem_size())
+                );
+                println!(
+                    "    max allocation: {}",
+                    format_bytes_info(device.max_mem_alloc_size())
+                );
+                println!(
+                    "    local memory: {}",
+                    format_bytes_info(device.local_mem_size())
+                );
+
+                if vendor.to_ascii_lowercase().contains("nvidia") {
+                    println!(
+                        "    note: NVIDIA OpenCL is intended but not yet maintainer hardware-validated"
+                    );
+                }
             }
         }
 
@@ -289,6 +363,98 @@ mod gpu {
         format!(
             "#define WORKSIZE {work_size}\n{SHA256_KERNEL}\n{SHA512_KERNEL}\n{RIPEMD160_KERNEL}\n{lbry_without_includes}\n"
         )
+    }
+
+    fn format_info<T, E>(result: std::result::Result<T, E>) -> String
+    where
+        T: Display,
+        E: Display,
+    {
+        result
+            .map(|value| value.to_string())
+            .unwrap_or_else(|err| format!("<error: {err}>"))
+    }
+
+    fn format_vec_info<T, E>(result: std::result::Result<Vec<T>, E>) -> String
+    where
+        T: Display,
+        E: Display,
+    {
+        result
+            .map(|values| {
+                values
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(" x ")
+            })
+            .unwrap_or_else(|err| format!("<error: {err}>"))
+    }
+
+    fn format_optional_info<T, E>(result: std::result::Result<T, E>) -> String
+    where
+        T: Display,
+        E: Display,
+    {
+        result
+            .map(|value| value.to_string())
+            .unwrap_or_else(|err| format!("<unavailable: {err}>"))
+    }
+
+    fn format_bytes_info<E>(result: std::result::Result<cl_ulong, E>) -> String
+    where
+        E: Display,
+    {
+        result
+            .map(format_bytes)
+            .unwrap_or_else(|err| format!("<error: {err}>"))
+    }
+
+    fn format_bytes(bytes: cl_ulong) -> String {
+        const KIB: f64 = 1024.0;
+        const MIB: f64 = KIB * 1024.0;
+        const GIB: f64 = MIB * 1024.0;
+
+        let bytes_f = bytes as f64;
+        if bytes_f >= GIB {
+            format!("{:.2} GiB ({bytes} bytes)", bytes_f / GIB)
+        } else if bytes_f >= MIB {
+            format!("{:.2} MiB ({bytes} bytes)", bytes_f / MIB)
+        } else if bytes_f >= KIB {
+            format!("{:.2} KiB ({bytes} bytes)", bytes_f / KIB)
+        } else {
+            format!("{bytes} bytes")
+        }
+    }
+
+    fn format_device_type<E>(result: std::result::Result<cl_device_type, E>) -> String
+    where
+        E: Display,
+    {
+        let device_type = match result {
+            Ok(device_type) => device_type,
+            Err(err) => return format!("<error: {err}>"),
+        };
+
+        let mut names = Vec::new();
+        if device_type & CL_DEVICE_TYPE_DEFAULT != 0 {
+            names.push("DEFAULT");
+        }
+        if device_type & CL_DEVICE_TYPE_CPU != 0 {
+            names.push("CPU");
+        }
+        if device_type & CL_DEVICE_TYPE_GPU != 0 {
+            names.push("GPU");
+        }
+        if device_type & CL_DEVICE_TYPE_ACCELERATOR != 0 {
+            names.push("ACCELERATOR");
+        }
+
+        if names.is_empty() {
+            format!("0x{device_type:x}")
+        } else {
+            names.join("|")
+        }
     }
 }
 

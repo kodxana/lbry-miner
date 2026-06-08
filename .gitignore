@@ -1,0 +1,15 @@
+target/
+
+# Local miner profiles can contain payout addresses and worker names.
+configs/*.local.json
+
+# Local logs and scratch files.
+*.log
+*.tmp
+
+# Platform build outputs if binaries are copied out of target/.
+*.exe
+*.pdb
+*.dll
+*.so
+*.dylib
