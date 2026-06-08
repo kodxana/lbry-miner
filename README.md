@@ -61,6 +61,19 @@ Still experimental:
 
 ## Quick start
 
+### Prebuilt binaries
+
+Tagged releases build Windows and Linux x64 packages through GitHub Actions:
+
+- `lbc-miner-windows-x64.zip`
+- `lbc-miner-linux-x64.tar.gz`
+
+Each package contains the miner binary, license files, README, and
+`configs/lbrypool.json`. GPU drivers and OpenCL/HIP runtime libraries still need
+to be installed on the machine running the miner.
+
+### Build from source
+
 Clone the repo and create a local config from the example:
 
 ```bash
