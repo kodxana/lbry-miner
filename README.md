@@ -5,9 +5,14 @@
 **Experimental Rust GPU miner for the LBRY proof-of-work algorithm.**
 
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![CI](https://github.com/kodxana/lbry-miner/actions/workflows/ci.yml/badge.svg)](https://github.com/kodxana/lbry-miner/actions/workflows/ci.yml)
+[![Release builds](https://github.com/kodxana/lbry-miner/actions/workflows/release.yml/badge.svg)](https://github.com/kodxana/lbry-miner/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/kodxana/lbry-miner?include_prereleases)](https://github.com/kodxana/lbry-miner/releases)
+[![Release downloads](https://img.shields.io/github/downloads/kodxana/lbry-miner/total)](https://github.com/kodxana/lbry-miner/releases)
 ![Language: Rust](https://img.shields.io/badge/language-Rust-orange.svg)
 ![Backend: OpenCL](https://img.shields.io/badge/backend-OpenCL-2ea44f.svg)
 ![Backend: HIP/ROCm](https://img.shields.io/badge/backend-HIP%2FROCm-cc342d.svg)
+![NVIDIA: OpenCL experimental](https://img.shields.io/badge/NVIDIA-OpenCL%20experimental-76b900.svg)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental-yellow.svg)
 [![Last commit](https://img.shields.io/github/last-commit/kodxana/lbry-miner)](https://github.com/kodxana/lbry-miner/commits)
 [![Issues](https://img.shields.io/github/issues/kodxana/lbry-miner)](https://github.com/kodxana/lbry-miner/issues)
